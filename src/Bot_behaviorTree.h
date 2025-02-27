@@ -24,6 +24,8 @@ struct IsUnitType {
 
 class DecisionTreeBot : public Agent {
 public:
+    Race race;
+
 	// Current state of our behavior tree
 	BotState current_state = INIT;
 

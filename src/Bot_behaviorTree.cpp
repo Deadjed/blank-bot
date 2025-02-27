@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include "protossUnits.h"
 
 // Called when the game starts
 void DecisionTreeBot::OnGameStart() {
@@ -29,6 +30,9 @@ void DecisionTreeBot::OnGameStart() {
 		game_info.playable_max.x - main_base_location.x,
 		game_info.playable_max.y - main_base_location.y
 	);
+
+	// Store player race
+	race = game_info.player_info[0].race_actual;
 }
 
 // Called on each game step

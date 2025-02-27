@@ -1,0 +1,64 @@
+#ifndef PROTOSS_UNITS_H
+#define PROTOSS_UNITS_H
+
+#include <sc2api/sc2_agent.h>
+#include <list>
+
+// Workers
+const std::list<sc2::UNIT_TYPEID> protossWorkers = {
+    sc2::UNIT_TYPEID::PROTOSS_PROBE
+};
+
+// Combat Units (Army)
+const std::list<sc2::UNIT_TYPEID> protossArmy = {
+    sc2::UNIT_TYPEID::PROTOSS_ZEALOT,
+    sc2::UNIT_TYPEID::PROTOSS_STALKER,
+    sc2::UNIT_TYPEID::PROTOSS_ADEPT,
+    sc2::UNIT_TYPEID::PROTOSS_SENTRY,
+    sc2::UNIT_TYPEID::PROTOSS_HIGHTEMPLAR,
+    sc2::UNIT_TYPEID::PROTOSS_DARKTEMPLAR,
+    sc2::UNIT_TYPEID::PROTOSS_ARCHON,
+    sc2::UNIT_TYPEID::PROTOSS_IMMORTAL,
+    sc2::UNIT_TYPEID::PROTOSS_COLOSSUS,
+    sc2::UNIT_TYPEID::PROTOSS_DISRUPTOR,
+    sc2::UNIT_TYPEID::PROTOSS_PHOENIX,
+    sc2::UNIT_TYPEID::PROTOSS_VOIDRAY,
+    sc2::UNIT_TYPEID::PROTOSS_ORACLE,
+    sc2::UNIT_TYPEID::PROTOSS_TEMPEST,
+    sc2::UNIT_TYPEID::PROTOSS_CARRIER,
+    sc2::UNIT_TYPEID::PROTOSS_MOTHERSHIP
+};
+
+// Production Buildings (Barracks equivalent)
+const std::list<sc2::UNIT_TYPEID> protossProductionBuildings = {
+    sc2::UNIT_TYPEID::PROTOSS_GATEWAY,
+    sc2::UNIT_TYPEID::PROTOSS_WARPGATE,
+    sc2::UNIT_TYPEID::PROTOSS_ROBOTICSFACILITY,
+    sc2::UNIT_TYPEID::PROTOSS_STARGATE
+};
+
+// Tech Buildings (Upgrades, Unlocking Units)
+const std::list<sc2::UNIT_TYPEID> protossTechBuildings = {
+    sc2::UNIT_TYPEID::PROTOSS_CYBERNETICSCORE,
+    sc2::UNIT_TYPEID::PROTOSS_TWILIGHTCOUNCIL,
+    sc2::UNIT_TYPEID::PROTOSS_ROBOTICSBAY,
+    sc2::UNIT_TYPEID::PROTOSS_TEMPLARARCHIVE,
+    sc2::UNIT_TYPEID::PROTOSS_DARKSHRINE,
+    sc2::UNIT_TYPEID::PROTOSS_FLEETBEACON
+};
+
+// Base & Economy Structures
+const std::list<sc2::UNIT_TYPEID> protossBaseStructures = {
+    sc2::UNIT_TYPEID::PROTOSS_NEXUS,
+    sc2::UNIT_TYPEID::PROTOSS_PYLON,
+    sc2::UNIT_TYPEID::PROTOSS_ASSIMILATOR
+};
+
+// Defensive Structures
+const std::list<sc2::UNIT_TYPEID> protossDefensiveBuildings = {
+    sc2::UNIT_TYPEID::PROTOSS_PHOTONCANNON,
+    sc2::UNIT_TYPEID::PROTOSS_SHIELDBATTERY
+};
+
+#endif // PROTOSS_UNITS_H
+
