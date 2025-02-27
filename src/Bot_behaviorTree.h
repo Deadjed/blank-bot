@@ -2,6 +2,7 @@
 
 #include <sc2api/sc2_api.h>
 #include <vector>
+#include "protossUnits.h"
 
 using namespace sc2;
 
@@ -25,6 +26,7 @@ struct IsUnitType {
 class DecisionTreeBot : public Agent {
 public:
     Race race;
+    ProtossUnits protoss;
 
 	// Current state of our behavior tree
 	BotState current_state = INIT;
@@ -32,8 +34,11 @@ public:
 	// Track our buildings, units, and enemy units
 	std::vector<const Unit*> our_workers;
 	std::vector<const Unit*> our_army;
+	std::vector<const Unit*> our_production_buildings;
+	std::vector<const Unit*> our_tech_buildings;
+	std::vector<const Unit*> our_base_buildings;
+	std::vector<const Unit*> our_defensive_buildings;
 	std::vector<const Unit*> enemy_units;
-	std::vector<const Unit*> our_bases;
 	Point2D enemy_base_location;
 	Point2D main_base_location;
 	bool scouting_initiated = false;
@@ -47,9 +52,6 @@ public:
 
     // Updates our lists of units
     void UpdateUnitLists();
-
-	// Helper to check if a unit type is a building
-    bool IsBuilding(UnitTypeID unit_type);
 
     // Handles the initialization state
     void HandleInitState();

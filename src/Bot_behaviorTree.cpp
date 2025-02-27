@@ -17,7 +17,7 @@ void DecisionTreeBot::OnGameStart() {
 	// Find our starting location
 	const Units units = Observation()->GetUnits();
 	for (const auto& unit : units) {
-		if (unit->alliance == Unit::Alliance::Self && unit->unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER) {
+		if (unit->alliance == Unit::Alliance::Self && unit->unit_type == UNIT_TYPEID::PROTOSS_NEXUS) {
 			main_base_location = unit->pos;
 			break;
 		}
@@ -72,54 +72,39 @@ void DecisionTreeBot::OnStep() {
 void DecisionTreeBot::UpdateUnitLists() {
 	our_workers.clear();
 	our_army.clear();
+	our_production_buildings.clear();
+	our_tech_buildings.clear();
+	our_base_buildings.clear();
+	our_defensive_buildings.clear();
 	enemy_units.clear();
-	our_bases.clear();
 	
 	Units units = Observation()->GetUnits();
 	for (const auto& unit : units) {
 		if (unit->alliance == Unit::Alliance::Self) {
 			UnitTypeID unit_type = unit->unit_type;
 			
-			// Workers (SCVs for Terran)
-			if (unit_type == UNIT_TYPEID::TERRAN_SCV) {
+			if (protoss.IsWorker(unit_type))
 				our_workers.push_back(unit);
-			}
-			// Army units (very basic for now - any non-worker, non-building)
-			else if (!IsBuilding(unit_type) && unit_type != UNIT_TYPEID::TERRAN_SCV) {
+
+			else if (protoss.IsArmyUnit(unit_type))
 				our_army.push_back(unit);
-			}
-			// Command centers and other base structures
-			else if (unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER || 
-					 unit_type == UNIT_TYPEID::TERRAN_ORBITALCOMMAND || 
-					 unit_type == UNIT_TYPEID::TERRAN_PLANETARYFORTRESS) {
-				our_bases.push_back(unit);
-			}
+
+			else if (protoss.IsProductionBuilding(unit_type))
+				our_production_buildings.push_back(unit);
+
+			else if (protoss.IsTechBuilding(unit_type))
+				our_tech_buildings.push_back(unit);
+
+			else if (protoss.IsBaseStructure(unit_type))
+				our_base_buildings.push_back(unit);
+
+			else if (protoss.IsDefensiveBuilding(unit_type))
+				our_defensive_buildings.push_back(unit);
 		}
 		else if (unit->alliance == Unit::Alliance::Enemy) {
 			enemy_units.push_back(unit);
 		}
 	}
-}
-
-// Helper to check if a unit type is a building
-bool DecisionTreeBot::IsBuilding(UnitTypeID unit_type) {
-	// List of common Terran buildings - extend as needed
-	static std::vector<UnitTypeID> building_types = {
-		UNIT_TYPEID::TERRAN_COMMANDCENTER,
-		UNIT_TYPEID::TERRAN_SUPPLYDEPOT,
-		UNIT_TYPEID::TERRAN_BARRACKS,
-		UNIT_TYPEID::TERRAN_FACTORY,
-		UNIT_TYPEID::TERRAN_STARPORT,
-		UNIT_TYPEID::TERRAN_ENGINEERINGBAY,
-		UNIT_TYPEID::TERRAN_ARMORY,
-		UNIT_TYPEID::TERRAN_ORBITALCOMMAND,
-		UNIT_TYPEID::TERRAN_PLANETARYFORTRESS,
-		UNIT_TYPEID::TERRAN_BUNKER,
-		UNIT_TYPEID::TERRAN_MISSILETURRET,
-		UNIT_TYPEID::TERRAN_SENSORTOWER
-	};
-	
-	return std::find(building_types.begin(), building_types.end(), unit_type) != building_types.end();
 }
 
 // Handles the initialization state
@@ -133,35 +118,38 @@ void DecisionTreeBot::HandleInitState() {
 void DecisionTreeBot::HandleEconomyState() {
 	std::cout << "Economy state..." << std::endl;
 	
-	// Build more SCVs if we have fewer than 20 and we have a command center
-	if (our_workers.size() < 20 && !our_bases.empty()) {
-		for (const auto& base : our_bases) {
-			if (base->unit_type == UNIT_TYPEID::TERRAN_COMMANDCENTER && 
+	// Build more workers if we have fewer than 20 and we have a main base
+	if (our_workers.size() < 20 && !our_base_buildings.empty()) {
+		for (const auto& base : our_base_buildings) {
+			if (base->unit_type == UNIT_TYPEID::PROTOSS_NEXUS && 
 				base->orders.empty() && 
 				Observation()->GetMinerals() >= 50) {
-				Actions()->UnitCommand(base, ABILITY_ID::TRAIN_SCV);
+				Actions()->UnitCommand(base, ABILITY_ID::TRAIN_PROBE);
 				break;
 			}
 		}
 	}
+
+	// TODO: Build a vespene gas supply
+	// TODO: Assign workers to vespene gas
 	
-	// Build a supply depot if we're close to supply cap
+	// Build a pylon if we're close to supply cap
 	if (Observation()->GetFoodUsed() >= Observation()->GetFoodCap() - 5 && 
 		Observation()->GetFoodCap() < 200 && 
 		Observation()->GetMinerals() >= 100) {
-		// Find a place near our base to build the supply depot
+		// Find a place near our base to build the pylon
 		const Unit* builder = FindBuilder();
 		if (builder) {
-			Point2D build_location = FindPlacement(ABILITY_ID::BUILD_SUPPLYDEPOT, main_base_location, 15.0f);
+			Point2D build_location = FindPlacement(ABILITY_ID::BUILD_PYLON, main_base_location, 15.0f);
 			if (build_location.x != 0) {
-				Actions()->UnitCommand(builder, ABILITY_ID::BUILD_SUPPLYDEPOT, build_location);
+				Actions()->UnitCommand(builder, ABILITY_ID::BUILD_PYLON, build_location);
 			}
 		}
 	}
 	
-	// Build a barracks if we have at least 16 workers and enough minerals
+	// Build a gateway if we have at least 16 workers and enough minerals
 	if (our_workers.size() >= 16 && 
-		CountUnitType(UNIT_TYPEID::TERRAN_BARRACKS) < 2 && 
+		CountUnitType(UNIT_TYPEID::PROTOSS_WARPGATE) < 2 && 
 		Observation()->GetMinerals() >= 150) {
 		// Find a place to build a barracks
 		const Unit* builder = FindBuilder();
@@ -189,18 +177,18 @@ void DecisionTreeBot::HandleArmyState() {
 	std::cout << "Army state..." << std::endl;
 	
 	// Find all barracks using our custom filter
-	Units barracks;
+	Units warpgate;
 	Units all_units = Observation()->GetUnits(Unit::Alliance::Self);
 	for (const auto& unit : all_units) {
-		if (unit->unit_type == UNIT_TYPEID::TERRAN_BARRACKS) {
-			barracks.push_back(unit);
+		if (unit->unit_type == UNIT_TYPEID::PROTOSS_WARPGATE) {
+			warpgate.push_back(unit);
 		}
 	}
 	
 	// Train marines from barracks
-	for (const auto& barrack : barracks) {
+	for (const auto& barrack : warpgate) {
 		if (barrack->orders.empty() && Observation()->GetMinerals() >= 50) {
-			Actions()->UnitCommand(barrack, ABILITY_ID::TRAIN_MARINE);
+			Actions()->UnitCommand(barrack, ABILITY_ID::TRAIN_ZEALOT);
 		}
 	}
 }
@@ -268,13 +256,13 @@ void DecisionTreeBot::DetermineNextState() {
 	}
 	
 	// If we have a decent army size, go attack
-	if (our_army.size() >= 20) {
+	if (our_army.size() >= 15) {
 		current_state = ATTACK;
 		return;
 	}
 	
 	// If we need more army, focus on that
-	if (our_army.size() < 20 && our_workers.size() >= 16) {
+	if (our_army.size() < 15 && our_workers.size() >= 16) {
 		current_state = ARMY;
 		return;
 	}
