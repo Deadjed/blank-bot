@@ -79,7 +79,7 @@ public:
 
     Point2D GetRandomPointInCircle(const Point2D& center, float radius);
 
-    //float GetRandomScalar();
+    float GetRandomScalar();
 
     int CountUnitType(UNIT_TYPEID unit_type);
 

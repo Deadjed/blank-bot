@@ -35,6 +35,8 @@ void DecisionTreeBot::OnGameStart() {
 void DecisionTreeBot::OnStep() {
 	// Update our unit lists
 	UpdateUnitLists();
+
+	int minerals = Observation()->GetMinerals();
 	
 	// Execute the current state of our behavior tree
 	switch (current_state) {
@@ -345,7 +347,7 @@ Point2D DecisionTreeBot::GetRandomPointInCircle(const Point2D& center, float rad
 	return Point2D(center.x + cos(angle) * distance, center.y + sin(angle) * distance);
 }
 
-float GetRandomScalar() {
+float DecisionTreeBot::GetRandomScalar() {
 	return static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
 }
 
