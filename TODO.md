@@ -1,3 +1,11 @@
+# High Level Decision
+**Decision Heirachy**
+1. Are we under attack?
+2. Do we have resources?
+3. Do we need to build to increase strategic capability?
+4. Are we ready to defend ourselves?
+5. Can we advance our technology?
+
 # Subtrees   
 ## Economy   
 **Goal:** To gather resources, build capability, and advance technology   
