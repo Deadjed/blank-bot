@@ -4,6 +4,7 @@
 **Input**
 - Current buildings
 - Current research?   
+
 **Output**
 - Resources to mine
 - Buildings to build
@@ -13,6 +14,7 @@
 **Goal:** To build an army effective against opponents capabilities    
 **Input**
 - Amount of Melee/Range/Air units   
+
 **Output**
 - Units to build
 
@@ -21,6 +23,7 @@
 **Input**
 - Enemy locations (and their type Melee/Range/Air)
 - Our army unit locations (and their type Melee/Range/Air)   
+
 **Output**
 - Delegate unit attacks
 - Unit movement
@@ -32,6 +35,7 @@
 - Enemy locations (and their type Melee/Range/Air)
 - Our army unit locations (and their type Melee/Range/Air)
 - Our defensive buildings   
+
 **Output**
 - Delegate unit/building attacks
 - Unit movement
