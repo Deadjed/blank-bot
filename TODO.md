@@ -25,9 +25,15 @@
   - minerals
   - vespene gas
 - population vs population cap
-- amount of each building type
-- amount of each military type
-- amount of each other unit type
+- buildings
+  - Locations
+  - total count
+- military units
+  - Locations
+  - total count
+- each other unit type
+  - Locations
+  - total count
 - technology advancements?
 
 **output**
