@@ -19,6 +19,17 @@
     - Otherwise develop defensive capabilities
     - Otherwise advance military capabilities
 
+**Required Information**
+- Unit/building under attack status
+- resources
+  - minerals
+  - vespene gas
+- population vs population cap
+- amount of each building type
+- amount of each military type
+- amount of each other unit type
+- technology advancements?
+
 # Subtrees   
 ## Economy   
 **Goal:** To gather resources, build capability, and advance technology   
