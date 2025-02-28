@@ -1,10 +1,23 @@
 # High Level Decision
-**Decision Heirachy**
+**Decision Hierarchy**
 1. Are we under attack?
-2. Do we have resources?
-3. Do we need to build to increase strategic capability?
-4. Are we ready to defend ourselves?
-5. Can we advance our technology?
+   - Defend if we can
+   - Otherwise flee
+3. Do we have resources?
+   - Gather nearby minerals if available
+   - otherwise expand base near more resources
+5. Do we need to build to increase strategic capability?
+   - Build to advance resources
+   - Build to advance military development capabilities
+   - Build to advance technological capability
+7. Are we ready to defend ourselves?
+   - Build defensive capability
+   - Build army if required
+   - Otherwise launch an attack
+9. Can we advance our technology?
+    - Advance resource collection if possible
+    - Otherwise develop defensive capabilities
+    - Otherwise advance military capabilities
 
 # Subtrees   
 ## Economy   
