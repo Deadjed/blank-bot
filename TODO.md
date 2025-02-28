@@ -30,6 +30,9 @@
 - amount of each other unit type
 - technology advancements?
 
+**output**
+Which subtree to currently control the AI
+
 # Subtrees   
 ## Economy   
 **Goal:** To gather resources, build capability, and advance technology   
