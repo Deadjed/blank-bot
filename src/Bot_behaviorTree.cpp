@@ -6,6 +6,7 @@
 #include <string>
 #include <algorithm>
 #include "protossUnits.h"
+#include "pylonManager.h"
 
 // Called when the game starts
 void DecisionTreeBot::OnGameStart() {
@@ -116,6 +117,94 @@ void DecisionTreeBot::HandleInitState() {
 
 // Handles the economy building state
 void DecisionTreeBot::HandleEconomyState() {
+    std::cout << "Economy state..." << std::endl;
+    
+    // Track if we've constructed an assimilator this step
+    static bool assimilator_built_this_step = false;
+    assimilator_built_this_step = false;
+    
+    // Build more workers if we have fewer than 20 and we have a main base
+    if (our_workers.size() < 20 && !our_base_buildings.empty()) {
+        for (const auto& base : our_base_buildings) {
+            if (base->unit_type == UNIT_TYPEID::PROTOSS_NEXUS && 
+                base->orders.empty() && 
+                Observation()->GetMinerals() >= 50) {
+                Actions()->UnitCommand(base, ABILITY_ID::TRAIN_PROBE);
+                break;
+            }
+        }
+    }
+
+    // Count existing assimilators and ones under construction
+    int assimilatorCount = CountUnitType(UNIT_TYPEID::PROTOSS_ASSIMILATOR);
+    int maxAssimilatorsPerBase = 2; // Each base typically has 2 nearby geysers
+    
+    // Check if we need more assimilators
+    bool needMoreAssimilators = false;
+    int workersPerAssimilator = 3; // Ideal number of workers per assimilator
+    
+    // We want at least one assimilator when we have enough workers
+    if (our_workers.size() >= 12 && assimilatorCount < our_base_buildings.size() * maxAssimilatorsPerBase) {
+        needMoreAssimilators = true;
+    }
+    
+    // Create a pylonManager instance
+    static PylonManager pylonManager;
+    
+    // Only try to build an assimilator if we need more and have enough minerals
+    if (needMoreAssimilators && Observation()->GetMinerals() >= 75) {
+        pylonManager.BuildAssimilator(Observation(), Actions());
+        assimilator_built_this_step = true;
+    }
+    
+    // Assign workers to gas if we're not building an assimilator this step
+    // This prevents conflicts between building and harvesting commands
+    if (!assimilator_built_this_step) {
+        pylonManager.AssignIdleWorkersToVespene(Actions(), Observation());
+    }
+    
+    // Build a pylon if we're close to supply cap
+    if (Observation()->GetFoodUsed() >= Observation()->GetFoodCap() - 5 && 
+        Observation()->GetFoodCap() < 200 && 
+        Observation()->GetMinerals() >= 100) {
+        // Find a place near our base to build the pylon
+        const Unit* builder = FindBuilder();
+        if (builder) {
+            Point2D build_location = FindPlacement(ABILITY_ID::BUILD_PYLON, main_base_location, 15.0f);
+            if (build_location.x != 0) {
+                Actions()->UnitCommand(builder, ABILITY_ID::BUILD_PYLON, build_location);
+            }
+        }
+    }
+    
+    // Build a gateway if we have at least 16 workers and enough minerals
+    if (our_workers.size() >= 16 && 
+        CountUnitType(UNIT_TYPEID::PROTOSS_WARPGATE) < 2 && 
+        Observation()->GetMinerals() >= 150) {
+        // Find a place to build a gateway
+        const Unit* builder = FindBuilder();
+        if (builder) {
+            Point2D build_location = FindPlacement(ABILITY_ID::BUILD_GATEWAY, main_base_location, 20.0f);
+            if (build_location.x != 0) {
+                Actions()->UnitCommand(builder, ABILITY_ID::BUILD_GATEWAY, build_location);
+            }
+        }
+    }
+    
+    // Ensure workers are mining
+    for (const auto& worker : our_workers) {
+        if (worker->orders.empty()) {
+            const Unit* mineral = FindNearestMineralPatch(worker->pos);
+            if (mineral) {
+                Actions()->UnitCommand(worker, ABILITY_ID::HARVEST_GATHER, mineral);
+            }
+        }
+    }
+}
+
+/*
+// Handles the economy building state
+void DecisionTreeBot::HandleEconomyState() {
 	std::cout << "Economy state..." << std::endl;
 	
 	// Build more workers if we have fewer than 20 and we have a main base
@@ -131,7 +220,10 @@ void DecisionTreeBot::HandleEconomyState() {
 	}
 
 	// TODO: Build a vespene gas supply
+	PylonManager pylonManager;
+	pylonManager.BuildAssimilator(Observation(), Actions());
 	// TODO: Assign workers to vespene gas
+	pylonManager.AssignIdleWorkersToVespene(Actions(), Observation());
 	
 	// Build a pylon if we're close to supply cap
 	if (Observation()->GetFoodUsed() >= Observation()->GetFoodCap() - 5 && 
@@ -170,7 +262,7 @@ void DecisionTreeBot::HandleEconomyState() {
 			}
 		}
 	}
-}
+}*/
 
 // Handles the army building state
 void DecisionTreeBot::HandleArmyState() {
@@ -262,7 +354,7 @@ void DecisionTreeBot::DetermineNextState() {
 	}
 	
 	// If we need more army, focus on that
-	if (our_army.size() < 15 && our_workers.size() >= 16) {
+	if (our_army.size() < 15 && our_workers.size() >= 16 && our_production_buildings.size() > 1) {
 		current_state = ARMY;
 		return;
 	}
