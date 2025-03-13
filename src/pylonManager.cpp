@@ -25,10 +25,10 @@ sc2::Point2D PylonManager::FindBuildLocationNearPylon(const sc2::Unit* pylon, co
 }
 
 void PylonManager::ManageWorkerAssignments(sc2::ActionInterface* actions, const sc2::ObservationInterface* observation) {
-    // 1. Get all our units
+
+    // Get all workers
     Units units = observation->GetUnits();
     
-    // Filter our workers
     std::vector<const Unit*> workers;
     std::vector<const Unit*> mineral_fields;
     std::vector<const Unit*> assimilators;
@@ -38,6 +38,7 @@ void PylonManager::ManageWorkerAssignments(sc2::ActionInterface* actions, const 
             workers.push_back(unit);
         }
         else if (IsMineralField(unit->unit_type) && unit->alliance == Unit::Alliance::Neutral) {
+            // TODO: check if within range of a nexus
             mineral_fields.push_back(unit);
         }
         else if (unit->unit_type == UNIT_TYPEID::PROTOSS_ASSIMILATOR && 
@@ -47,7 +48,7 @@ void PylonManager::ManageWorkerAssignments(sc2::ActionInterface* actions, const 
         }
     }
     
-    // 2. Classify all workers by current assignment
+    // Classify all workers by current assignment
     std::vector<const Unit*> idle_workers;
     std::vector<const Unit*> mineral_workers;
     std::vector<const Unit*> gas_workers;
@@ -84,15 +85,15 @@ void PylonManager::ManageWorkerAssignments(sc2::ActionInterface* actions, const 
         }
     }
     
-    // 3. Calculate optimal distributions
+    // Calculate optimal distributions
     int total_available_workers = idle_workers.size() + mineral_workers.size() + gas_workers.size();
     int total_mineral_patches = mineral_fields.size();
     int total_gas_geysers = assimilators.size();
     
     // Calculate ideal distribution
-    int ideal_workers_per_gas = 3;
+    int ideal_workers_per_gas = 2;
     int ideal_gas_workers = total_gas_geysers * ideal_workers_per_gas;
-    int ideal_mineral_workers = total_available_workers - ideal_gas_workers;
+    int ideal_mineral_workers = total_mineral_patches * 2;
     
     // Make sure we're not trying to assign negative workers to minerals
     if (ideal_mineral_workers < 0) {

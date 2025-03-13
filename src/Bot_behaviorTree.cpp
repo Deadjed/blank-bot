@@ -41,13 +41,28 @@ void DecisionTreeBot::OnStep() {
 	// Update our unit lists
 	UpdateUnitLists();
 
-	int minerals = Observation()->GetMinerals();
+	//int minerals = Observation()->GetMinerals();
 	
     // Create a pylonManager instance
     static PylonManager pylonManager;
 
 	// Manager workers
 	pylonManager.ManageWorkerAssignments(Actions(), Observation());
+
+
+    // Build a pylon if we're close to supply cap
+    if (Observation()->GetFoodUsed() >= Observation()->GetFoodCap() - 5 && 
+        Observation()->GetFoodCap() < 200 && 
+        Observation()->GetMinerals() >= 100) {
+        // Find a place near our base to build the pylon
+        const Unit* builder = FindBuilder();
+        if (builder) {
+            Point2D build_location = FindPlacement(ABILITY_ID::BUILD_PYLON, main_base_location, 15.0f);
+            if (build_location.x != 0) {
+                Actions()->UnitCommand(builder, ABILITY_ID::BUILD_PYLON, build_location);
+            }
+        }
+    }
 
 	// Execute the current state of our behavior tree
 	switch (current_state) {
@@ -73,6 +88,46 @@ void DecisionTreeBot::OnStep() {
 	
 	// Transition between states based on conditions
 	DetermineNextState();
+}
+
+// Determines what state to transition to next
+void DecisionTreeBot::DetermineNextState() {
+	// Check if we're under attack
+	bool under_attack = false;
+	for (const auto& enemy : enemy_units) {
+		float distance_to_base = Distance2D(enemy->pos, main_base_location);
+		if (distance_to_base < 30.0f) {
+			under_attack = true;
+			break;
+		}
+	}
+	
+	// If we're under attack, switch to defense
+	if (under_attack) {
+		current_state = DEFEND;
+		return;
+	}
+	
+	// If we have a decent army size, go attack
+	if (our_army.size() >= 15) {
+		current_state = ATTACK;
+		return;
+	}
+	
+	// If we need more army, focus on that
+	if (our_army.size() < 15 && our_workers.size() >= 16 && our_production_buildings.size() > 5) {
+		current_state = ARMY;
+		return;
+	}
+	
+	// If we need to scout and have enough workers
+	if (!scouting_initiated && our_workers.size() > 10) {
+		current_state = SCOUT;
+		return;
+	}
+	
+	// Default to economy focus
+	current_state = ECONOMY;
 }
 
 // Updates our lists of units
@@ -127,10 +182,22 @@ void DecisionTreeBot::HandleEconomyState() {
     
     // Track if we've constructed an assimilator this step
     static bool assimilator_built_this_step = false;
-    assimilator_built_this_step = false;
     
-    // Build more workers if we have fewer than 20 and we have a main base
-    if (our_workers.size() < 20 && !our_base_buildings.empty()) {
+	// Build workers if we need more
+    int workersPerAssimilator = 3; // Ideal number of workers per assimilator
+	int workers_required = 0;
+
+	for (auto building : our_base_buildings) {
+		if (building->unit_type == sc2::UNIT_TYPEID::PROTOSS_NEXUS) {
+			workers_required += 16;
+		}
+
+		if (building->unit_type == sc2::UNIT_TYPEID::PROTOSS_ASSIMILATOR) {
+			workers_required += workersPerAssimilator;
+		}
+	}
+
+    if (our_workers.size() < workers_required && !our_base_buildings.empty()) {
         for (const auto& base : our_base_buildings) {
             if (base->unit_type == UNIT_TYPEID::PROTOSS_NEXUS && 
                 base->orders.empty() && 
@@ -147,7 +214,6 @@ void DecisionTreeBot::HandleEconomyState() {
     
     // Check if we need more assimilators
     bool needMoreAssimilators = false;
-    int workersPerAssimilator = 3; // Ideal number of workers per assimilator
     
     // We want at least one assimilator when we have enough workers
     if (our_workers.size() >= 12 && assimilatorCount < our_base_buildings.size() * maxAssimilatorsPerBase) {
@@ -158,23 +224,10 @@ void DecisionTreeBot::HandleEconomyState() {
     static PylonManager pylonManager;
     
     // Only try to build an assimilator if we need more and have enough minerals
+	// TODO: Also only build assimilator if we have less than a 2 Assim to 1 Nexus ratio
     if (needMoreAssimilators && Observation()->GetMinerals() >= 75) {
         pylonManager.BuildAssimilator(Observation(), Actions());
         assimilator_built_this_step = true;
-    }
-    
-    // Build a pylon if we're close to supply cap
-    if (Observation()->GetFoodUsed() >= Observation()->GetFoodCap() - 5 && 
-        Observation()->GetFoodCap() < 200 && 
-        Observation()->GetMinerals() >= 100) {
-        // Find a place near our base to build the pylon
-        const Unit* builder = FindBuilder();
-        if (builder) {
-            Point2D build_location = FindPlacement(ABILITY_ID::BUILD_PYLON, main_base_location, 15.0f);
-            if (build_location.x != 0) {
-                Actions()->UnitCommand(builder, ABILITY_ID::BUILD_PYLON, build_location);
-            }
-        }
     }
     
     // Build a gateway if we have at least 16 workers and enough minerals
@@ -190,8 +243,25 @@ void DecisionTreeBot::HandleEconomyState() {
             }
         }
     }
+
+	// Build a cybernetics core if we have enough resources
+	// TODO: Check if we already have a cybernetics core
+	if (Observation()->GetMinerals() >= 200) {
+        // Find a place to build
+        const Unit* builder = FindBuilder();
+        if (builder) {
+            Point2D build_location = FindPlacement(ABILITY_ID::BUILD_CYBERNETICSCORE, main_base_location, 20.0f);
+            if (build_location.x != 0) {
+                Actions()->UnitCommand(builder, ABILITY_ID::BUILD_CYBERNETICSCORE, build_location);
+            }
+        }
+	}
+
+	// TODO: Build defensive structures
+
     
     // Ensure workers are mining
+	/*
     for (const auto& worker : our_workers) {
         if (worker->orders.empty()) {
             const Unit* mineral = FindNearestMineralPatch(worker->pos);
@@ -199,7 +269,7 @@ void DecisionTreeBot::HandleEconomyState() {
                 Actions()->UnitCommand(worker, ABILITY_ID::HARVEST_GATHER, mineral);
             }
         }
-    }
+    }*/
 }
 
 // Handles the army building state
@@ -221,11 +291,15 @@ void DecisionTreeBot::HandleArmyState() {
 			Actions()->UnitCommand(barrack, ABILITY_ID::TRAIN_ZEALOT);
 		}
 	}
+
+	// TODO: Check if we have cybernetics core to build stalkers
 }
 
 // Handles the attack state
 void DecisionTreeBot::HandleAttackState() {
 	std::cout << "Attack state..." << std::endl;
+
+	// TODO: Pick smarter targets to attack while advancing to enemy base
 	
 	// If we have enough army units, attack the enemy base
 	if (our_army.size() >= 15) {
@@ -236,7 +310,7 @@ void DecisionTreeBot::HandleAttackState() {
 	
 	// If we see enemy units, attack them
 	if (!enemy_units.empty() && !our_army.empty()) {
-		const Unit* target = enemy_units.front(); // Just pick the first enemy unit for now
+		const Unit* target = enemy_units.front();
 		for (const auto& unit : our_army) {
 			Actions()->UnitCommand(unit, ABILITY_ID::ATTACK_ATTACK, target);
 		}
@@ -245,6 +319,9 @@ void DecisionTreeBot::HandleAttackState() {
 
 // Handles the defense state
 void DecisionTreeBot::HandleDefendState() {
+	// Keep building units
+	HandleArmyState();
+
 	std::cout << "Defend state..." << std::endl;
 	
 	// If there are enemies near our base, defend
@@ -252,6 +329,8 @@ void DecisionTreeBot::HandleDefendState() {
 	for (const auto& unit : our_army) {
 		Actions()->UnitCommand(unit, ABILITY_ID::ATTACK_ATTACK, defense_point);
 	}
+
+	// TODO: utilise defensive structures if available
 }
 
 // Handles the scouting state
@@ -265,46 +344,6 @@ void DecisionTreeBot::HandleScoutState() {
 		Actions()->UnitCommand(scout, ABILITY_ID::MOVE_MOVE, enemy_base_location);
 		scouting_initiated = true;
 	}
-}
-
-// Determines what state to transition to next
-void DecisionTreeBot::DetermineNextState() {
-	// Check if we're under attack
-	bool under_attack = false;
-	for (const auto& enemy : enemy_units) {
-		float distance_to_base = Distance2D(enemy->pos, main_base_location);
-		if (distance_to_base < 30.0f) {
-			under_attack = true;
-			break;
-		}
-	}
-	
-	// If we're under attack, switch to defense
-	if (under_attack) {
-		current_state = DEFEND;
-		return;
-	}
-	
-	// If we have a decent army size, go attack
-	if (our_army.size() >= 15) {
-		current_state = ATTACK;
-		return;
-	}
-	
-	// If we need more army, focus on that
-	if (our_army.size() < 15 && our_workers.size() >= 16 && our_production_buildings.size() > 1) {
-		current_state = ARMY;
-		return;
-	}
-	
-	// If we need to scout and have enough workers
-	if (!scouting_initiated && our_workers.size() > 10) {
-		current_state = SCOUT;
-		return;
-	}
-	
-	// Default to economy focus
-	current_state = ECONOMY;
 }
 
 // Helper functions
