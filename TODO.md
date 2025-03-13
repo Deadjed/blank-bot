@@ -81,3 +81,9 @@ Which subtree to currently control the AI
 - Delegate unit/building attacks
 - Unit movement
 - Unit/building abilities
+
+# Potential Technologies
+- Deep Deterministic Policy Gradient (DDPG)
+  - off-policy algorithm that uses actor-critic architecture. The actor proposes actions based on the state, while the critic evaluates them and helps the actor improve.
+- Proximal Policy Optimization (PPO).
+  - more stable on-policy algorithm that works well in environments with continuous actions and is easier to implement than DDPG.
