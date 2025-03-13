@@ -202,84 +202,22 @@ void DecisionTreeBot::HandleEconomyState() {
     }
 }
 
-/*
-// Handles the economy building state
-void DecisionTreeBot::HandleEconomyState() {
-	std::cout << "Economy state..." << std::endl;
-	
-	// Build more workers if we have fewer than 20 and we have a main base
-	if (our_workers.size() < 20 && !our_base_buildings.empty()) {
-		for (const auto& base : our_base_buildings) {
-			if (base->unit_type == UNIT_TYPEID::PROTOSS_NEXUS && 
-				base->orders.empty() && 
-				Observation()->GetMinerals() >= 50) {
-				Actions()->UnitCommand(base, ABILITY_ID::TRAIN_PROBE);
-				break;
-			}
-		}
-	}
-
-	// TODO: Build a vespene gas supply
-	PylonManager pylonManager;
-	pylonManager.BuildAssimilator(Observation(), Actions());
-	// TODO: Assign workers to vespene gas
-	pylonManager.AssignIdleWorkersToVespene(Actions(), Observation());
-	
-	// Build a pylon if we're close to supply cap
-	if (Observation()->GetFoodUsed() >= Observation()->GetFoodCap() - 5 && 
-		Observation()->GetFoodCap() < 200 && 
-		Observation()->GetMinerals() >= 100) {
-		// Find a place near our base to build the pylon
-		const Unit* builder = FindBuilder();
-		if (builder) {
-			Point2D build_location = FindPlacement(ABILITY_ID::BUILD_PYLON, main_base_location, 15.0f);
-			if (build_location.x != 0) {
-				Actions()->UnitCommand(builder, ABILITY_ID::BUILD_PYLON, build_location);
-			}
-		}
-	}
-	
-	// Build a gateway if we have at least 16 workers and enough minerals
-	if (our_workers.size() >= 16 && 
-		CountUnitType(UNIT_TYPEID::PROTOSS_WARPGATE) < 2 && 
-		Observation()->GetMinerals() >= 150) {
-		// Find a place to build a barracks
-		const Unit* builder = FindBuilder();
-		if (builder) {
-			Point2D build_location = FindPlacement(ABILITY_ID::BUILD_BARRACKS, main_base_location, 20.0f);
-			if (build_location.x != 0) {
-				Actions()->UnitCommand(builder, ABILITY_ID::BUILD_BARRACKS, build_location);
-			}
-		}
-	}
-	
-	// Ensure workers are mining
-	for (const auto& worker : our_workers) {
-		if (worker->orders.empty()) {
-			const Unit* mineral = FindNearestMineralPatch(worker->pos);
-			if (mineral) {
-				Actions()->UnitCommand(worker, ABILITY_ID::HARVEST_GATHER, mineral);
-			}
-		}
-	}
-}*/
-
 // Handles the army building state
 void DecisionTreeBot::HandleArmyState() {
 	std::cout << "Army state..." << std::endl;
 	
 	// Find all barracks using our custom filter
-	Units warpgate;
+	Units gateways;
 	Units all_units = Observation()->GetUnits(Unit::Alliance::Self);
 	for (const auto& unit : all_units) {
-		if (unit->unit_type == UNIT_TYPEID::PROTOSS_WARPGATE) {
-			warpgate.push_back(unit);
+		if (unit->unit_type == UNIT_TYPEID::PROTOSS_GATEWAY) {
+			gateways.push_back(unit);
 		}
 	}
 	
-	// Train marines from barracks
-	for (const auto& barrack : warpgate) {
-		if (barrack->orders.empty() && Observation()->GetMinerals() >= 50) {
+	// Train zealot from barracks
+	for (const auto& barrack : gateways) {
+		if (barrack->orders.empty() && Observation()->GetMinerals() >= 100) {
 			Actions()->UnitCommand(barrack, ABILITY_ID::TRAIN_ZEALOT);
 		}
 	}
