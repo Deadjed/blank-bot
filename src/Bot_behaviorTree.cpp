@@ -43,6 +43,12 @@ void DecisionTreeBot::OnStep() {
 
 	int minerals = Observation()->GetMinerals();
 	
+    // Create a pylonManager instance
+    static PylonManager pylonManager;
+
+	// Manager workers
+	pylonManager.ManageWorkerAssignments(Actions(), Observation());
+
 	// Execute the current state of our behavior tree
 	switch (current_state) {
 		case INIT:
@@ -155,12 +161,6 @@ void DecisionTreeBot::HandleEconomyState() {
     if (needMoreAssimilators && Observation()->GetMinerals() >= 75) {
         pylonManager.BuildAssimilator(Observation(), Actions());
         assimilator_built_this_step = true;
-    }
-    
-    // Assign workers to gas if we're not building an assimilator this step
-    // This prevents conflicts between building and harvesting commands
-    if (!assimilator_built_this_step) {
-        pylonManager.AssignIdleWorkersToVespene(Actions(), Observation());
     }
     
     // Build a pylon if we're close to supply cap

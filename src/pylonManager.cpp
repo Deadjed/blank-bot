@@ -1,6 +1,8 @@
 #include "PylonManager.h"
 #include <sc2api/sc2_client.cc>
 
+using namespace sc2;
+
 bool PylonManager::IsPylonPowered(const sc2::Unit* pylon) {
     return pylon && pylon->is_powered;
 }
@@ -22,6 +24,177 @@ sc2::Point2D PylonManager::FindBuildLocationNearPylon(const sc2::Unit* pylon, co
     return pylon_pos;
 }
 
+void PylonManager::ManageWorkerAssignments(sc2::ActionInterface* actions, const sc2::ObservationInterface* observation) {
+    // 1. Get all our units
+    Units units = observation->GetUnits();
+    
+    // Filter our workers
+    std::vector<const Unit*> workers;
+    std::vector<const Unit*> mineral_fields;
+    std::vector<const Unit*> assimilators;
+    
+    for (const auto& unit : units) {
+        if (unit->unit_type == UNIT_TYPEID::PROTOSS_PROBE && unit->alliance == Unit::Alliance::Self) {
+            workers.push_back(unit);
+        }
+        else if (IsMineralField(unit->unit_type) && unit->alliance == Unit::Alliance::Neutral) {
+            mineral_fields.push_back(unit);
+        }
+        else if (unit->unit_type == UNIT_TYPEID::PROTOSS_ASSIMILATOR && 
+                unit->alliance == Unit::Alliance::Self && 
+                unit->build_progress == 1.0f) {
+            assimilators.push_back(unit);
+        }
+    }
+    
+    // 2. Classify all workers by current assignment
+    std::vector<const Unit*> idle_workers;
+    std::vector<const Unit*> mineral_workers;
+    std::vector<const Unit*> gas_workers;
+    std::vector<const Unit*> other_workers; // Building, scouting, etc.
+    
+    for (const auto& worker : workers) {
+        if (worker->orders.empty()) {
+            idle_workers.push_back(worker);
+        } 
+        else {
+            auto& order = worker->orders.front();
+            if (order.ability_id == ABILITY_ID::HARVEST_GATHER) {
+                // Find the target unit
+                const Unit* target = nullptr;
+                for (const auto& unit : units) {
+                    if (unit->tag == order.target_unit_tag) {
+                        target = unit;
+                        break;
+                    }
+                }
+                
+                if (target) {
+                    if (target->unit_type == UNIT_TYPEID::PROTOSS_ASSIMILATOR) {
+                        gas_workers.push_back(worker);
+                    } 
+                    else if (IsMineralField(target->unit_type)) {
+                        mineral_workers.push_back(worker);
+                    }
+                }
+            } 
+            else {
+                other_workers.push_back(worker);
+            }
+        }
+    }
+    
+    // 3. Calculate optimal distributions
+    int total_available_workers = idle_workers.size() + mineral_workers.size() + gas_workers.size();
+    int total_mineral_patches = mineral_fields.size();
+    int total_gas_geysers = assimilators.size();
+    
+    // Calculate ideal distribution
+    int ideal_workers_per_gas = 3;
+    int ideal_gas_workers = total_gas_geysers * ideal_workers_per_gas;
+    int ideal_mineral_workers = total_available_workers - ideal_gas_workers;
+    
+    // Make sure we're not trying to assign negative workers to minerals
+    if (ideal_mineral_workers < 0) {
+        // We don't have enough workers for both tasks, prioritize some minimum mineral income
+        int min_mineral_workers = std::min(8, total_available_workers);
+        ideal_mineral_workers = min_mineral_workers;
+        ideal_gas_workers = total_available_workers - min_mineral_workers;
+    }
+    
+    // 4. Reassign workers to achieve optimal distribution
+    // First, make sure gas has exactly the right number of workers
+    int gas_workers_delta = ideal_gas_workers - gas_workers.size();
+    
+    if (gas_workers_delta > 0) {
+        // Need to add workers to gas
+        int to_move = std::min(gas_workers_delta, (int)idle_workers.size());
+        
+        // First use idle workers
+        for (int i = 0; i < to_move; i++) {
+            AssignWorkerToNearestAssimilator(idle_workers[i], assimilators, actions);
+        }
+        
+        // Remove assigned workers from idle list
+        if (to_move > 0) {
+            idle_workers.erase(idle_workers.begin(), idle_workers.begin() + to_move);
+        }
+        
+        // If we still need more gas workers, pull from minerals
+        gas_workers_delta -= to_move;
+        to_move = std::min(gas_workers_delta, (int)mineral_workers.size());
+        
+        for (int i = 0; i < to_move; i++) {
+            AssignWorkerToNearestAssimilator(mineral_workers[i], assimilators, actions);
+        }
+    } 
+    else if (gas_workers_delta < 0) {
+        // Too many workers on gas, move some to minerals
+        int to_move = std::min(-gas_workers_delta, (int)gas_workers.size());
+        
+        for (int i = 0; i < to_move; i++) {
+            AssignWorkerToNearestMineralPatch(gas_workers[i], mineral_fields, actions);
+        }
+    }
+    
+    // 5. Assign any remaining idle workers to minerals
+    for (const auto& worker : idle_workers) {
+        AssignWorkerToNearestMineralPatch(worker, mineral_fields, actions);
+    }
+}
+
+// Helper methods
+bool PylonManager::IsMineralField(UNIT_TYPEID unit_type) {
+    // Check if it's a mineral field type
+    return unit_type == UNIT_TYPEID::NEUTRAL_MINERALFIELD || 
+           unit_type == UNIT_TYPEID::NEUTRAL_MINERALFIELD750 ||
+           unit_type == UNIT_TYPEID::NEUTRAL_RICHMINERALFIELD ||
+           unit_type == UNIT_TYPEID::NEUTRAL_RICHMINERALFIELD750;
+}
+
+void PylonManager::AssignWorkerToNearestAssimilator(const Unit* worker, 
+                                                   const std::vector<const Unit*>& assimilators,
+                                                   ActionInterface* actions) {
+    if (assimilators.empty()) return;
+    
+    // Find assimilator with fewest assigned workers
+    const Unit* best_assimilator = nullptr;
+    int lowest_workers = 999;
+    
+    for (const auto& assimilator : assimilators) {
+        if (assimilator->assigned_harvesters < lowest_workers) {
+            lowest_workers = assimilator->assigned_harvesters;
+            best_assimilator = assimilator;
+        }
+    }
+    
+    if (best_assimilator) {
+        actions->UnitCommand(worker, ABILITY_ID::HARVEST_GATHER, best_assimilator);
+    }
+}
+
+void PylonManager::AssignWorkerToNearestMineralPatch(const Unit* worker,
+                                                    const std::vector<const Unit*>& minerals,
+                                                    ActionInterface* actions) {
+    if (minerals.empty()) return;
+    
+    // Find nearest mineral patch
+    float closest_dist = std::numeric_limits<float>::max();
+    const Unit* closest_mineral = nullptr;
+    
+    for (const auto& mineral : minerals) {
+        float dist = Distance2D(worker->pos, mineral->pos);
+        if (dist < closest_dist) {
+            closest_dist = dist;
+            closest_mineral = mineral;
+        }
+    }
+    
+    if (closest_mineral) {
+        actions->UnitCommand(worker, ABILITY_ID::HARVEST_GATHER, closest_mineral);
+    }
+}
+
 void PylonManager::AssignIdleWorkersToVespene(sc2::ActionInterface* actions, const sc2::ObservationInterface* observation) {
     // Get all assimilators
     auto assimilators = observation->GetUnits(sc2::Unit::Alliance::Self, 
@@ -32,7 +205,7 @@ void PylonManager::AssignIdleWorkersToVespene(sc2::ActionInterface* actions, con
         });
     
     if (assimilators.empty()) {
-        return; // No assimilators need workers
+        return;
     }
     
     // Find idle workers
@@ -88,6 +261,7 @@ void PylonManager::BuildAssimilator(const sc2::ObservationInterface* observation
 				unit.unit_type != sc2::UNIT_TYPEID::NEUTRAL_RICHVESPENEGEYSER &&
 				unit.unit_type != sc2::UNIT_TYPEID::NEUTRAL_PURIFIERVESPENEGEYSER &&
 				unit.unit_type != sc2::UNIT_TYPEID::NEUTRAL_SHAKURASVESPENEGEYSER &&
+				unit.unit_type != sc2::UNIT_TYPEID::NEUTRAL_SPACEPLATFORMGEYSER &&
 				unit.unit_type != sc2::UNIT_TYPEID::NEUTRAL_PROTOSSVESPENEGEYSER) {
 				return false;
 			}
