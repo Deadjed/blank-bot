@@ -3,6 +3,7 @@
 // Copyright (c) 2021-2024 Alexander Kurbatov
 
 #include "Bot.h"
+#include "Bot_behaviorTree.h"
 
 #include <sc2api/sc2_coordinator.h>
 #include <sc2api/sc2_gametypes.h>
@@ -104,13 +105,15 @@ int main(int argc, char* argv[])
     // NOTE: Uncomment to play at normal speed.
     // coordinator.SetRealtime(true);
 
-    Bot bot;
+    //Bot bot;
+    DecisionTreeBot bot;
     coordinator.SetParticipants(
         {
-            CreateParticipant(sc2::Race::Random, &bot, "BlankBot"),
+            CreateParticipant(sc2::Race::Protoss, &bot, "My Bot"),
             CreateComputer(
                 sc2::Race::Random,
-                sc2::Difficulty::CheatInsane,
+                // sc2::Difficulty::CheatInsane,
+                sc2::Difficulty::Medium,
                 sc2::AIBuild::Rush,
                 "CheatInsane"
                 )
