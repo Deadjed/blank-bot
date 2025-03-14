@@ -259,6 +259,7 @@ void DecisionTreeBot::HandleEconomyState() {
 
 	// TODO: Build defensive structures
 
+	// TODO: Build more bases if we are maxing out resource collection
     
     // Ensure workers are mining
 	/*
