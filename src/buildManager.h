@@ -7,8 +7,12 @@
 class BuildManager {
 public:
     void BuildAssimilator(const sc2::ObservationInterface* observation, sc2::ActionInterface* actions);
+    void BuildGateway(const sc2::ObservationInterface* observation, sc2::ActionInterface* actions,sc2::QueryInterface* query, sc2::Point2D base_location, std::vector<const sc2::Unit*> our_workers);
 
 private:
+    sc2::Point2D FindPlacement(sc2::QueryInterface* query, sc2::AbilityID ability_type_for_structure, sc2::Point2D near_to, float max_distance);
+    sc2::Point2D GetRandomPointInCircle(const sc2::Point2D& center, float radius);
+    float GetRandomScalar();
 };
 
 #endif

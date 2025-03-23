@@ -1,11 +1,12 @@
 #include "buildManager.h"
+#include "probeManager.h"
 #include <iostream>
+#include <vector>
 
 void BuildManager::BuildAssimilator(const sc2::ObservationInterface* observation, sc2::ActionInterface* actions) {
-    std::cout << "\nWe are trying to build an Assimilator" << std::endl;
     // Check if we have enough minerals
     if (observation->GetMinerals() < 75) {
-        std::cout << "Not enough minerals!" << std::endl;
+        std::cout << "Not enough minerals to build assimilator!" << std::endl;
         return;
     }
 
@@ -16,8 +17,8 @@ void BuildManager::BuildAssimilator(const sc2::ObservationInterface* observation
         });
 
     if (bases.empty()) {
-        std::cout << "No bases!" << std::endl;
-        return; // No bases, can't assign geysers effectively
+        std::cout << "No bases, can't assign geysers effectively!" << std::endl;
+        return;
     }
 
     // For each base, find the closest available geysers
@@ -43,7 +44,6 @@ void BuildManager::BuildAssimilator(const sc2::ObservationInterface* observation
 				return false;
 			}
 
-			// Debug the distance
 			std::cout << "Found geyser at distance: " << distance << " from base" << std::endl;
 
 			// Check if there's already an assimilator on this geyser
@@ -112,4 +112,58 @@ void BuildManager::BuildAssimilator(const sc2::ObservationInterface* observation
         // Only build one assimilator per step
         return;
     }
+}
+
+void BuildManager::BuildGateway(const sc2::ObservationInterface* observation, sc2::ActionInterface* actions, sc2::QueryInterface* query, sc2::Point2D base_location, std::vector<const sc2::Unit*> our_workers)
+{
+    ProbeManager probeManager;
+
+    if (observation->GetMinerals() < 150) {
+        std::cout << "Not enough minerals to build Gateway!" << std::endl;
+        return;
+    }
+
+    // Get main base location
+	auto main_base_location = observation->GetUnits(sc2::Unit::Alliance::Self);
+    //sc2::Point2D main_base_location = observation->GetUnits(sc2::Unit::Alliance::Self);
+
+	// Find a place to build a gateway
+	const sc2::Unit* builder = probeManager.FindBuilder(our_workers);
+	if (builder) {
+		sc2::Point2D build_location = FindPlacement(query, sc2::ABILITY_ID::BUILD_GATEWAY, base_location, 20.0f);
+		if (build_location.x != 0) {
+			actions->UnitCommand(builder, sc2::ABILITY_ID::BUILD_GATEWAY, build_location);
+		}
+	}
+}
+
+sc2::Point2D BuildManager::FindPlacement(sc2::QueryInterface* query, sc2::AbilityID ability_type_for_structure, sc2::Point2D near_to, float max_distance) {
+	sc2::Point2D result = sc2::Point2D(0, 0);
+	float distance = max_distance;
+	
+	// Try up to 10 different locations at decreasing distances
+	for (int i = 0; i < 10; ++i) {
+		sc2::Point2D try_location = GetRandomPointInCircle(near_to, distance);
+		
+		// Query if this location is valid for this building type
+		if (query->Placement(ability_type_for_structure, try_location)) {
+			return try_location;
+		}
+		
+		// Decrease distance to try closer to the original point
+		distance -= distance / 10.0f;
+	}
+	
+	return result; // Return 0,0 if no placement found
+}
+
+sc2::Point2D BuildManager::GetRandomPointInCircle(const sc2::Point2D& center, float radius) {
+	float angle = GetRandomScalar() * 3.14159f * 2.0f;
+	float distance = sqrt(GetRandomScalar()) * radius;
+	
+	return sc2::Point2D(center.x + cos(angle) * distance, center.y + sin(angle) * distance);
+}
+
+float BuildManager::GetRandomScalar() {
+	return static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
 }

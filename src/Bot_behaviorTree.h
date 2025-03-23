@@ -79,11 +79,11 @@ public:
 
     const Unit* FindNearestMineralPatch(const Point2D& start);
 
-    Point2D FindPlacement(AbilityID ability_type_for_structure, Point2D near_to, float max_distance);
+    //Point2D FindPlacement(AbilityID ability_type_for_structure, Point2D near_to, float max_distance);
 
-    Point2D GetRandomPointInCircle(const Point2D& center, float radius);
+    //Point2D GetRandomPointInCircle(const Point2D& center, float radius);
 
-    float GetRandomScalar();
+    //float GetRandomScalar();
 
     int CountUnitType(UNIT_TYPEID unit_type);
 

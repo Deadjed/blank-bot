@@ -7,6 +7,7 @@
 #include <algorithm>
 #include "protossUnits.h"
 #include "pylonManager.h"
+#include "buildManager.h"
 
 // Called when the game starts
 void DecisionTreeBot::OnGameStart() {
@@ -48,7 +49,6 @@ void DecisionTreeBot::OnStep() {
 
 	// Manager workers
 	pylonManager.ManageWorkerAssignments(Actions(), Observation());
-
 
     // Build a pylon if we're close to supply cap
     if (Observation()->GetFoodUsed() >= Observation()->GetFoodCap() - 5 && 
@@ -165,6 +165,7 @@ void DecisionTreeBot::UpdateUnitLists() {
 		}
 		else if (unit->alliance == Unit::Alliance::Enemy) {
 			enemy_units.push_back(unit);
+			// TODO: Categorise enemy units here?
 		}
 	}
 }
@@ -183,6 +184,7 @@ void DecisionTreeBot::HandleEconomyState() {
     // Track if we've constructed an assimilator this step
     static bool assimilator_built_this_step = false;
     
+	// TODO: Move this functionality to a worker manager
 	// Build workers if we need more
     int workersPerAssimilator = 3; // Ideal number of workers per assimilator
 	int workers_required = 0;
@@ -208,6 +210,7 @@ void DecisionTreeBot::HandleEconomyState() {
         }
     }
 
+	// TODO: Move this to a resource manager
     // Count existing assimilators and ones under construction
     int assimilatorCount = CountUnitType(UNIT_TYPEID::PROTOSS_ASSIMILATOR);
     int maxAssimilatorsPerBase = 2; // Each base typically has 2 nearby geysers
@@ -222,11 +225,12 @@ void DecisionTreeBot::HandleEconomyState() {
     
     // Create a pylonManager instance
     static PylonManager pylonManager;
+	static BuildManager buildManager;
     
     // Only try to build an assimilator if we need more and have enough minerals
 	// TODO: Also only build assimilator if we have less than a 2 Assim to 1 Nexus ratio
     if (needMoreAssimilators && Observation()->GetMinerals() >= 75) {
-        pylonManager.BuildAssimilator(Observation(), Actions());
+        buildManager.BuildAssimilator(Observation(), Actions());
         assimilator_built_this_step = true;
     }
     
@@ -234,14 +238,11 @@ void DecisionTreeBot::HandleEconomyState() {
     if (our_workers.size() >= 16 && 
         CountUnitType(UNIT_TYPEID::PROTOSS_WARPGATE) < 2 && 
         Observation()->GetMinerals() >= 150) {
-        // Find a place to build a gateway
-        const Unit* builder = FindBuilder();
-        if (builder) {
-            Point2D build_location = FindPlacement(ABILITY_ID::BUILD_GATEWAY, main_base_location, 20.0f);
-            if (build_location.x != 0) {
-                Actions()->UnitCommand(builder, ABILITY_ID::BUILD_GATEWAY, build_location);
-            }
-        }
+			// Find a place to build a gateway
+			const Unit* builder = FindBuilder();
+			if (builder) {
+				buildManager.BuildGateway(Observation(), Actions(), Query(), main_base_location, our_workers);
+			}
     }
 
 	// Build a cybernetics core if we have enough resources
@@ -382,36 +383,36 @@ const Unit* DecisionTreeBot::FindNearestMineralPatch(const Point2D& start) {
 	return target;
 }
 
-Point2D DecisionTreeBot::FindPlacement(AbilityID ability_type_for_structure, Point2D near_to, float max_distance) {
-	Point2D result = Point2D(0, 0);
-	float distance = max_distance;
-	
-	// Try up to 10 different locations at decreasing distances
-	for (int i = 0; i < 10; ++i) {
-		Point2D try_location = GetRandomPointInCircle(near_to, distance);
-		
-		// Query if this location is valid for this building type
-		if (Query()->Placement(ability_type_for_structure, try_location)) {
-			return try_location;
-		}
-		
-		// Decrease distance to try closer to the original point
-		distance -= distance / 10.0f;
-	}
-	
-	return result; // Return 0,0 if no placement found
-}
-
-Point2D DecisionTreeBot::GetRandomPointInCircle(const Point2D& center, float radius) {
-	float angle = GetRandomScalar() * 3.14159f * 2.0f;
-	float distance = sqrt(GetRandomScalar()) * radius;
-	
-	return Point2D(center.x + cos(angle) * distance, center.y + sin(angle) * distance);
-}
-
-float DecisionTreeBot::GetRandomScalar() {
-	return static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-}
+//Point2D DecisionTreeBot::FindPlacement(AbilityID ability_type_for_structure, Point2D near_to, float max_distance) {
+//	Point2D result = Point2D(0, 0);
+//	float distance = max_distance;
+//	
+//	// Try up to 10 different locations at decreasing distances
+//	for (int i = 0; i < 10; ++i) {
+//		Point2D try_location = GetRandomPointInCircle(near_to, distance);
+//		
+//		// Query if this location is valid for this building type
+//		if (Query()->Placement(ability_type_for_structure, try_location)) {
+//			return try_location;
+//		}
+//		
+//		// Decrease distance to try closer to the original point
+//		distance -= distance / 10.0f;
+//	}
+//	
+//	return result; // Return 0,0 if no placement found
+//}
+//
+//Point2D DecisionTreeBot::GetRandomPointInCircle(const Point2D& center, float radius) {
+//	float angle = GetRandomScalar() * 3.14159f * 2.0f;
+//	float distance = sqrt(GetRandomScalar()) * radius;
+//	
+//	return Point2D(center.x + cos(angle) * distance, center.y + sin(angle) * distance);
+//}
+//
+//float DecisionTreeBot::GetRandomScalar() {
+//	return static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+//}
 
 int DecisionTreeBot::CountUnitType(UNIT_TYPEID unit_type) {
 	int count = 0;
