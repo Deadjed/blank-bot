@@ -114,25 +114,36 @@ void BuildManager::BuildAssimilator(const sc2::ObservationInterface* observation
     }
 }
 
-void BuildManager::BuildGateway(const sc2::ObservationInterface* observation, sc2::ActionInterface* actions, sc2::QueryInterface* query, sc2::Point2D base_location, std::vector<const sc2::Unit*> our_workers)
+void BuildManager::Build(const sc2::ObservationInterface* observation, sc2::ActionInterface* actions, sc2::QueryInterface* query, sc2::ABILITY_ID building, std::vector<const sc2::Unit*> our_workers)
 {
     ProbeManager probeManager;
 
-    if (observation->GetMinerals() < 150) {
-        std::cout << "Not enough minerals to build Gateway!" << std::endl;
-        return;
-    }
+    // TODO: Get mineral/gas cost of building to ensure we can build it
+    //sc2::Abilities abilityData = client->Observation()->GetAbilityData();
+    //abilityData
+    //if (client->Observation()->GetMinerals() < client->Observation().) {
+    //    std::cout << "Not enough minerals to build Cybernetics Core!" << std::endl;
+    //    return;
+    //}
 
     // Get main base location
-	auto main_base_location = observation->GetUnits(sc2::Unit::Alliance::Self);
+	// Find our base
+	sc2::Point2D base_location;
+	const sc2::Units units = observation->GetUnits(sc2::Unit::Alliance::Self);
+	for (const auto& unit : units) {
+		if (unit->alliance == sc2::Unit::Alliance::Self && unit->unit_type == sc2::UNIT_TYPEID::PROTOSS_NEXUS) {
+			base_location = unit->pos;
+			break;
+		}
+	}
     //sc2::Point2D main_base_location = observation->GetUnits(sc2::Unit::Alliance::Self);
 
-	// Find a place to build a gateway
+	// Find a place to build
 	const sc2::Unit* builder = probeManager.FindBuilder(our_workers);
 	if (builder) {
-		sc2::Point2D build_location = FindPlacement(query, sc2::ABILITY_ID::BUILD_GATEWAY, base_location, 20.0f);
+		sc2::Point2D build_location = FindPlacement(query, building, base_location, 20.0f);
 		if (build_location.x != 0) {
-			actions->UnitCommand(builder, sc2::ABILITY_ID::BUILD_GATEWAY, build_location);
+			actions->UnitCommand(builder, building, build_location);
 		}
 	}
 }

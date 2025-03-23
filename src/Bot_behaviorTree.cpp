@@ -57,10 +57,8 @@ void DecisionTreeBot::OnStep() {
         // Find a place near our base to build the pylon
         const Unit* builder = FindBuilder();
         if (builder) {
-            Point2D build_location = FindPlacement(ABILITY_ID::BUILD_PYLON, main_base_location, 15.0f);
-            if (build_location.x != 0) {
-                Actions()->UnitCommand(builder, ABILITY_ID::BUILD_PYLON, build_location);
-            }
+			BuildManager buildManager;
+			buildManager.Build(Observation(), Actions(), Query(), ABILITY_ID::BUILD_PYLON, our_workers);
         }
     }
 
@@ -241,7 +239,7 @@ void DecisionTreeBot::HandleEconomyState() {
 			// Find a place to build a gateway
 			const Unit* builder = FindBuilder();
 			if (builder) {
-				buildManager.BuildGateway(Observation(), Actions(), Query(), main_base_location, our_workers);
+				buildManager.Build(Observation(), Actions(), Query(), sc2::ABILITY_ID::BUILD_GATEWAY, our_workers);
 			}
     }
 
@@ -251,10 +249,7 @@ void DecisionTreeBot::HandleEconomyState() {
         // Find a place to build
         const Unit* builder = FindBuilder();
         if (builder) {
-            Point2D build_location = FindPlacement(ABILITY_ID::BUILD_CYBERNETICSCORE, main_base_location, 20.0f);
-            if (build_location.x != 0) {
-                Actions()->UnitCommand(builder, ABILITY_ID::BUILD_CYBERNETICSCORE, build_location);
-            }
+			buildManager.Build(Observation(), Actions(), Query(), sc2::ABILITY_ID::BUILD_CYBERNETICSCORE, our_workers);
         }
 	}
 
