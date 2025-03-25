@@ -3,6 +3,9 @@
 #include <sc2api/sc2_api.h>
 #include <vector>
 #include "protossUnits.h"
+#include "pylonManager.h"
+#include "buildManager.h"
+#include "probeManager.h"
 
 using namespace sc2;
 
@@ -27,6 +30,11 @@ class DecisionTreeBot : public Agent {
 public:
     Race race;
     ProtossUnits protoss;
+
+    // Helper classes
+    PylonManager pylonManager;
+	BuildManager buildManager;
+    ProbeManager probeManager;
 
 	// Current state of our behavior tree
 	BotState current_state = INIT;
@@ -75,9 +83,8 @@ public:
     void DetermineNextState();
 
     // Helper functions
-    const Unit* FindBuilder();
 
-    const Unit* FindNearestMineralPatch(const Point2D& start);
+    //const Unit* FindNearestMineralPatch(const Point2D& start);
 
     //Point2D FindPlacement(AbilityID ability_type_for_structure, Point2D near_to, float max_distance);
 

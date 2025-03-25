@@ -5,9 +5,6 @@
 #include <vector>
 #include <string>
 #include <algorithm>
-#include "protossUnits.h"
-#include "pylonManager.h"
-#include "buildManager.h"
 
 // Called when the game starts
 void DecisionTreeBot::OnGameStart() {
@@ -43,9 +40,6 @@ void DecisionTreeBot::OnStep() {
 	UpdateUnitLists();
 
 	//int minerals = Observation()->GetMinerals();
-	
-    // Create a pylonManager instance
-    static PylonManager pylonManager;
 
 	// Manager workers
 	pylonManager.ManageWorkerAssignments(Actions(), Observation());
@@ -55,9 +49,8 @@ void DecisionTreeBot::OnStep() {
         Observation()->GetFoodCap() < 200 && 
         Observation()->GetMinerals() >= 100) {
         // Find a place near our base to build the pylon
-        const Unit* builder = FindBuilder();
+        const Unit* builder = probeManager.FindBuilder(our_workers);
         if (builder) {
-			BuildManager buildManager;
 			buildManager.Build(Observation(), Actions(), Query(), ABILITY_ID::BUILD_PYLON, our_workers);
         }
     }
@@ -221,10 +214,6 @@ void DecisionTreeBot::HandleEconomyState() {
         needMoreAssimilators = true;
     }
     
-    // Create a pylonManager instance
-    static PylonManager pylonManager;
-	static BuildManager buildManager;
-    
     // Only try to build an assimilator if we need more and have enough minerals
 	// TODO: Also only build assimilator if we have less than a 2 Assim to 1 Nexus ratio
     if (needMoreAssimilators && Observation()->GetMinerals() >= 75) {
@@ -237,7 +226,7 @@ void DecisionTreeBot::HandleEconomyState() {
         CountUnitType(UNIT_TYPEID::PROTOSS_WARPGATE) < 2 && 
         Observation()->GetMinerals() >= 150) {
 			// Find a place to build a gateway
-			const Unit* builder = FindBuilder();
+			const Unit* builder = probeManager.FindBuilder(our_workers);
 			if (builder) {
 				buildManager.Build(Observation(), Actions(), Query(), sc2::ABILITY_ID::BUILD_GATEWAY, our_workers);
 			}
@@ -247,7 +236,7 @@ void DecisionTreeBot::HandleEconomyState() {
 	// TODO: Check if we already have a cybernetics core
 	if (Observation()->GetMinerals() >= 200) {
         // Find a place to build
-        const Unit* builder = FindBuilder();
+        const Unit* builder = probeManager.FindBuilder(our_workers);
         if (builder) {
 			buildManager.Build(Observation(), Actions(), Query(), sc2::ABILITY_ID::BUILD_CYBERNETICSCORE, our_workers);
         }
@@ -344,39 +333,39 @@ void DecisionTreeBot::HandleScoutState() {
 }
 
 // Helper functions
-const Unit* DecisionTreeBot::FindBuilder() {
-	if (our_workers.empty()) {
-		return nullptr;
-	}
-	
-	// Just return the first idle worker for now
-	for (const auto& worker : our_workers) {
-		if (worker->orders.empty()) {
-			return worker;
-		}
-	}
-	
-	// If no idle workers, just return the first one
-	return our_workers.front();
-}
+//const Unit* DecisionTreeBot::FindBuilder() {
+//	if (our_workers.empty()) {
+//		return nullptr;
+//	}
+//	
+//	// Just return the first idle worker for now
+//	for (const auto& worker : our_workers) {
+//		if (worker->orders.empty()) {
+//			return worker;
+//		}
+//	}
+//	
+//	// If no idle workers, just return the first one
+//	return our_workers.front();
+//}
 
-const Unit* DecisionTreeBot::FindNearestMineralPatch(const Point2D& start) {
-	Units units = Observation()->GetUnits(Unit::Alliance::Neutral);
-	float distance = std::numeric_limits<float>::max();
-	const Unit* target = nullptr;
-	
-	for (const auto& u : units) {
-		if (u->unit_type == UNIT_TYPEID::NEUTRAL_MINERALFIELD) {
-			float d = Distance2D(u->pos, start);
-			if (d < distance) {
-				distance = d;
-				target = u;
-			}
-		}
-	}
-	
-	return target;
-}
+//const Unit* DecisionTreeBot::FindNearestMineralPatch(const Point2D& start) {
+//	Units units = Observation()->GetUnits(Unit::Alliance::Neutral);
+//	float distance = std::numeric_limits<float>::max();
+//	const Unit* target = nullptr;
+//	
+//	for (const auto& u : units) {
+//		if (u->unit_type == UNIT_TYPEID::NEUTRAL_MINERALFIELD) {
+//			float d = Distance2D(u->pos, start);
+//			if (d < distance) {
+//				distance = d;
+//				target = u;
+//			}
+//		}
+//	}
+//	
+//	return target;
+//}
 
 //Point2D DecisionTreeBot::FindPlacement(AbilityID ability_type_for_structure, Point2D near_to, float max_distance) {
 //	Point2D result = Point2D(0, 0);
